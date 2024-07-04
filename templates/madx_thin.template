@@ -1,0 +1,123 @@
+!--------------------------------------------------------------
+! Example FCC-ee MAD-X script
+! This script prepares the {{operation_mode}} lattice.
+! The thick sequences is loaded and optics functions are saved to a twiss files.
+! Tapering will be applied, and the sequence will be saved to a file.
+!--------------------------------------------------------------
+
+SET, FORMAT="19.15f";
+option,update_from_parent=true; // new option in mad-x as of 2/2019
+
+!--------------------------------------------------------------
+! Lattice selection and beam parameters
+!--------------------------------------------------------------
+
+CALL, FILE="../../lattices/{{operation_mode}}/fccee_{{operation_mode}}.seq";
+
+pbeam :=   {{reference['ENERGY']}};
+EXbeam = {{reference['EMITTANCE_X']}};
+EYbeam = {{reference['EMITTANCE_Y']}};
+Nbun :=    {{reference['BUNCHES']}};
+NPar :=   {{reference['BUNCH_POPULATION']}};
+HalfCrossingAngle = 0.5*THETA_CROSS;
+
+QX := {{reference['Q1']}};
+QY := {{reference['Q2']}};
+
+Ebeam := sqrt( pbeam^2 + emass^2 );
+
+// Beam defined without radiation as a start - radiation is turned on later depending on the requirements
+BEAM, PARTICLE=ELECTRON, NPART=Npar, KBUNCH=Nbun, ENERGY=Ebeam, RADIATE=FALSE, BV=+1, EX=EXbeam, EY=EYbeam;
+
+USE, SEQUENCE = FCCEE_P_RING;
+! CALL, FILE="../../toolkit/install_matching_markers.madx";
+! CALL, FILE="../../toolkit/hfd_macros.madx";
+
+!--------------------------------------------------------------
+! Load aperture definitions and perform sequence edits
+!--------------------------------------------------------------
+
+// Load the aperture definition
+CALL, FILE="../../aperture/FCCee_aper_definitions.madx";
+
+!-------------------------------------------------------------------------------
+! Perform initial TWISS and survey in an ideal machine without radiation
+!-------------------------------------------------------------------------------
+
+USE, SEQUENCE = FCCEE_P_RING;
+
+// Save the voltage settings for the cavities for later use if needed
+VOLTCA1SAVE = VOLTCA1; 
+VOLTCA2SAVE = VOLTCA2; 
+
+// Turn off the cavities for ideal machine twiss and survey
+VOLTCA1 = 0;
+VOLTCA2 = 0;
+
+// Place where the initial conditions are saved - used for RF matching later if needed
+SAVEBETA, LABEL=B.IP, PLACE=#s, SEQUENCE=FCCEE_P_RING;
+
+TWISS;
+
+!-------------------------------------------------------------------------------
+! Slice lattice, create twiss for comparison, and save sequence
+!-------------------------------------------------------------------------------
+
+// Slicing with special attention to IR quads and sextupoles     
+SELECT, FLAG=makethin, CLASS=RFCAVITY, SLICE = 1;
+SELECT, FLAG=makethin, CLASS=rbend, SLICE = 4;
+SELECT, FLAG=makethin, CLASS=quadrupole, SLICE = 10;
+SELECT, FLAG=makethin, CLASS=sextupole, SLICE = 4;
+
+SELECT, FLAG=makethin, PATTERN="^B.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QF.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QD.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QFG.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QDG.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QL.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QS.*", SLICE=5;
+SELECT, FLAG=makethin, PATTERN="^QB.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QG.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QH.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QI.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QR.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QU.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QY.*", SLICE=10;
+SELECT, FLAG=makethin, PATTERN="^QA.*", SLICE=50;
+SELECT, FLAG=makethin, PATTERN="^QC.*", SLICE=200;
+SELECT, FLAG=makethin, PATTERN="^SY.*", SLICE=20;
+        
+MAKETHIN, SEQUENCE=FCCEE_P_RING, STYLE=TEAPOT, MAKEDIPEDGE=True;
+
+USE, SEQUENCE = FCCEE_P_RING;
+
+MATCH, SEQUENCE = FCCEE_P_RING;
+    VARY, NAME=K1QF4;
+    VARY, NAME=K1QF2;
+    VARY, NAME=K1QD3;
+    VARY, NAME=K1QD1;
+
+    GLOBAL, Q1=QX;
+    GLOBAL, Q2=QY;
+
+    LMDIF, CALLS=10000;
+    JACOBIAN, CALLS=10000;
+ENDMATCH;
+
+! EXEC, match_arc_cell;
+
+! EXEC, match_y_chroma_right;
+! EXEC, match_x_chroma_right;
+! EXEC, match_chroma_right;
+
+! EXEC, match_arc_with_technical_straight;
+! EXEC, match_arc_with_exp_straight;
+
+
+TWISS, FILE = "twiss_{{operation_mode}}_b1_thin_nottapered.tfs"; ! Twiss without radiation and tapering
+SAVE, SEQUENCE=FCCEE_P_RING, FILE="fcc_ee_{{operation_mode}}_b1_thin.seq";
+
+// RF back on
+VOLTCA1 = VOLTCA1SAVE;
+VOLTCA2 = VOLTCA2SAVE;
+SAVE, SEQUENCE=FCCEE_P_RING, FILE="fcc_ee_{{operation_mode}}_b1_thin_rf.seq";

@@ -1,0 +1,218 @@
+import json
+from pathlib import Path
+import numpy as np
+import pandas as pd
+
+import xtrack as xt
+import xpart as xp
+import xobjects as xo
+import xfields as xf
+import xdyna as xd
+
+REPOSITORY_TOP_LEVEL = Path(__file__).resolve().parent.parent.parent
+REFERENCE_FILE = json.load(open(REPOSITORY_TOP_LEVEL/"reference_parameters.json"))
+
+MODE = '{{operation_mode}}'
+
+LATTICE = REFERENCE_FILE['LATTICE']
+
+def load_file_and_set_beam(sequence_file):
+
+    filename = Path(sequence_file)
+    # Load json
+    with open(filename, 'r', encoding='utf-8') as fid:
+        loaded_dct = json.load(fid)
+    line = xt.Line.from_dict(loaded_dct)
+
+    ref_particle = xp.Particles(
+        mass0=xp.ELECTRON_MASS_EV,
+        q0=1,
+        p0c=REFERENCE_FILE[MODE]['ENERGY']*10**9
+        )
+    line.particle_ref = ref_particle            # Set nominal beam parameters
+    line.config.XTRACK_USE_EXACT_DRIFTS = True  # Set exact drifts
+
+    return line, ref_particle
+
+def main():
+
+    line, ref_particle = load_file_and_set_beam(f"fcc_ee_{MODE}_b1_thin_rf.json")
+
+    emit_y = REFERENCE_FILE[MODE]['EMITTANCE_Y']    # Take vertical emittance given in reference json file
+    sigma_z = REFERENCE_FILE[MODE]['SIGMA_Z_SR']    # Take bunch length given in reference json file (for beam-beam studies)
+    filename = f"OIDE_daxz_{MODE}_xsuite_{LATTICE}_{REFERENCE_FILE[MODE]['DA_XZ']['TURNS']}turns_SR.csv"
+
+    line.cycle('frf.1', inplace=True) # Cycle to the center of the RF section (frf.1 for GHC, scenter for LCC)
+    
+    run_longitudinal(ref_particle=ref_particle, xline=line, filename=filename, emit_y=emit_y, sigma_z=sigma_z)
+
+def init_DA(x_coord, px_coord, y_coord, py_coord, delta_coord, phi_coord):
+    """Create the DataFrame to store the particles input and output data"""
+    DA_data = pd.DataFrame()
+    DA_data['x_norm_in'] = x_coord.flatten()
+    DA_data['px_norm_in'] = px_coord.flatten()
+    DA_data['y_norm_in'] = y_coord.flatten()
+    DA_data['py_norm_in'] = py_coord.flatten()
+    DA_data['z_in'] = 0
+    DA_data['delta_in'] = delta_coord.flatten()
+    DA_data['r_xy_in'] = np.sqrt(DA_data['x_norm_in']**2 + DA_data['y_norm_in']**2)
+    DA_data['r_xpxypy_in'] = np.sqrt(DA_data['x_norm_in']**2 + DA_data['px_norm_in']**2 + DA_data['y_norm_in']**2 + DA_data['py_norm_in']**2)
+    DA_data['ang_xy_in'] = np.arctan2(DA_data['y_norm_in'], DA_data['x_norm_in'])*180/np.pi
+    
+    DA_data['phi'] = phi_coord.flatten()
+
+    DA_data['x_out'] = float(-1)
+    DA_data['y_out'] = float(-1)
+    DA_data['px_out'] = float(-1)
+    DA_data['py_out'] = float(-1)
+    DA_data['z_out'] = float(-1)
+    DA_data['delta_out'] = float(-1)
+    DA_data['s_out'] = float(-1)
+    DA_data['n_turns'] = float(-1)
+    
+    return DA_data
+
+def find_indices(m, tot_lista):
+    """Find indices for which particles have not been tracked yet"""
+    indices = []
+    for i in range(len(m)):
+        for ii, arr in enumerate(tot_lista):
+            if m[i] == arr[i]:
+                break
+            elif ii == len(tot_lista)-1 and m[i]!=arr[i]:
+                indices.append(i)
+    return indices
+
+def run_longitudinal(ref_particle, xline, filename, emit_y, sigma_z):
+    """Perform the longitudinal DA study"""
+    nturns = REFERENCE_FILE[MODE]['DA_XZ']['TURNS'] # Predefined number of tracking turns
+    
+    xline.particle_ref = ref_particle
+    # build tracker on chosen context
+    context = xo.ContextCpu()
+    xline.build_tracker(_context=context)           # Build tracker on chosen context
+    xline.configure_radiation(model=None)         # Only use the mean model, including damping from SR, can use 
+    xline.freeze_longitudinal()
+
+    phi = [0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi, -np.pi/4, -np.pi/2, -3*np.pi/4]
+
+    XX = np.round(np.arange(
+        REFERENCE_FILE[MODE]['DA_XZ']['Z_RANGE'][0],
+        REFERENCE_FILE[MODE]['DA_XZ']['Z_RANGE'][-1]+REFERENCE_FILE[MODE]['DA_XZ']['Z_STEP'], 
+        REFERENCE_FILE[MODE]['DA_XZ']['Z_STEP']
+        ),14)
+    XXX = np.repeat(XX, len(phi))                   # Repeat the off-energy steps for each phi angle
+    l_phi = np.round(np.array(phi*len(XX)),14)      # Round to 14 digits the phi angles (Xsuite precision)
+    diff = np.ones(len(XXX))*8                      # Set the difference to 8 for all the phi angles
+    a = np.zeros(len(XXX)) # lower is Jmin = 0      # Set the lower bound to 0
+    b = np.ones(len(XXX))*REFERENCE_FILE[MODE]['DA_XZ']['J_RANGE'][-1]
+    loop = 0                                        # Loop counter
+    tot_lista = [np.ones(len(XXX))*99]              # Keep track of the list tracked vertical normalized amplitudes
+    DA_data_save = pd.DataFrame()                   # Initialize the DataFrame to store the data
+    while (diff > 2).sum():                         # Perform dichotomie until all differences are below 2
+
+        m = np.floor((a + b) / 2).astype(int)
+        indices = find_indices(m, tot_lista)
+        line = xline.copy()
+
+        if len(indices) != 0:
+
+            line.build_tracker(_context=context)
+            line.configure_radiation(model=None)
+            
+            m_x = np.round(m * np.cos(l_phi), 14)
+            m_px = np.round(m * np.sin(l_phi), 14)
+            DA_data_n = init_DA(m_x[indices], m_px[indices], m_x[indices], m_px[indices], XXX[indices], l_phi[indices])
+            particles = line.build_particles(
+                x_norm=m_x[indices].flatten(), px_norm=m_px[indices].flatten(),
+                y_norm=m_x[indices].flatten(), py_norm=m_px[indices].flatten(),
+                nemitt_x=REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0],
+                nemitt_y=2e-3*REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0], # Set vertical normalized emittances to 2 per mil
+                zeta=0, delta=XXX[indices].flatten())
+
+            line.track(particles, num_turns=nturns, time=True,freeze_longitudinal=True)
+            particles.sort(interleave_lost_particles=True)
+            print(f'Tracked in {line.time_last_track} seconds')
+            sort = np.argsort(particles.particle_id)
+            DA_data_n.loc[sort, 'x_out'] = particles.x[sort]
+            DA_data_n.loc[sort, 'px_out'] = particles.px[sort]
+            DA_data_n.loc[sort, 'y_out'] = particles.y[sort]
+            DA_data_n.loc[sort, 'py_out'] = particles.py[sort]
+            DA_data_n.loc[sort, 'z_out'] = particles.zeta[sort]
+            DA_data_n.loc[sort, 'delta_out'] = particles.delta[sort]
+            DA_data_n.loc[sort, 's_out'] = particles.s[sort]
+            DA_data_n.loc[sort, 'n_turns'] = particles.at_turn[sort]
+        else:
+            break
+        
+        diff = abs(b - a)
+        for ii in indices:
+            idd = DA_data_n[
+                (np.round(DA_data_n['delta_in'],14)==np.round(XXX[ii],14)) &
+                (np.round(DA_data_n['x_norm_in'],14)==np.round(m_x[ii],14)) & 
+                (np.round(DA_data_n['px_norm_in'],14)==np.round(m_px[ii],14)) &
+                (np.round(DA_data_n['phi'],14)==np.round(l_phi[ii],14))
+            ].index
+            if DA_data_n.iloc[idd, -1].values >= nturns:
+                a[ii] = m[ii]
+            else:
+                b[ii] = m[ii]
+
+        tot_lista.append(m.copy())
+        loop +=1
+        DA_data_save = pd.concat([DA_data_save, DA_data_n])
+
+        DA_data_save.to_csv(str(filename[:-4] + f'_{loop}.csv'), index=False)   # Save the DA data each loop
+
+    DA_data_save.to_csv(filename)
+
+    y_step, tbd = REFERENCE_FILE[MODE]['DA_XZ']['J_STEP'], []
+    for i in range(len(XXX)):
+        J_data_reshaped = np.array(tot_lista).reshape(loop+1, len(XXX))
+        last_J_data = J_data_reshaped[-1,i]
+        if last_J_data != 0:
+            for j in range(-3, 11):         # Track DA around the 'DA limits' with X points below and Y above, for all energy offsets and phi angles
+                if last_J_data+j*y_step not in J_data_reshaped[:,i] and last_J_data+j*y_step <= REFERENCE_FILE[MODE]['DA_XZ']['J_RANGE'][-1] and last_J_data+j*y_step >= REFERENCE_FILE[MODE]['DA_XZ']['J_RANGE'][0]:
+                    # Has not been tracked yet and will be tracked
+                    tbd.append([XXX[i], (last_J_data+j*y_step)*np.cos(l_phi[i]), (last_J_data+j*y_step)*np.sin(l_phi[i]), l_phi[i]]) 
+        else:
+            for j in range(1, 11):          # Track DA with 11 points above J = 0
+                if last_J_data+j*y_step not in J_data_reshaped[:,i]:
+                    # Has not been tracked yet and will be tracked
+                    tbd.append([XXX[i], (last_J_data+j*y_step)*np.cos(l_phi[i]), (last_J_data+j*y_step)*np.sin(l_phi[i]), l_phi[i]]) 
+
+    DA_data_n = init_DA(
+        np.array(tbd)[:,1].flatten(), np.array(tbd)[:,2].flatten(), np.array(tbd)[:,1].flatten(), np.array(tbd)[:,2].flatten(), np.array(tbd)[:,0].flatten(), np.array(tbd)[:,3].flatten()
+        )
+
+    line = xline.copy()
+    line.build_tracker()
+    line.configure_radiation(model=None)
+    
+    particles = line.build_particles(
+        x_norm=np.array(tbd)[:,1].flatten(), px_norm=np.array(tbd)[:,2].flatten(),
+        y_norm=np.array(tbd)[:,1].flatten(), py_norm=np.array(tbd)[:,2].flatten(),
+        nemitt_x=REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0],
+        nemitt_y=2e-3*REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0], # normalized emittances
+        zeta=0, delta=np.array(tbd)[:,0].flatten())
+
+    line.track(particles, num_turns=nturns, time=True,freeze_longitudinal=True)
+    particles.sort(interleave_lost_particles=True)
+    print(f'Tracked in {line.time_last_track} seconds')
+    sort = np.argsort(particles.particle_id)
+    DA_data_n.loc[sort, 'x_out'] = particles.x[sort]
+    DA_data_n.loc[sort, 'px_out'] = particles.px[sort]
+    DA_data_n.loc[sort, 'y_out'] = particles.y[sort]
+    DA_data_n.loc[sort, 'py_out'] = particles.py[sort]
+    DA_data_n.loc[sort, 'z_out'] = particles.zeta[sort]
+    DA_data_n.loc[sort, 'delta_out'] = particles.delta[sort]
+    DA_data_n.loc[sort, 's_out'] = particles.s[sort]
+    DA_data_n.loc[sort, 'n_turns'] = particles.at_turn[sort]
+
+    DA_data_save = pd.concat([DA_data_save, DA_data_n])
+    DA_data_save.to_csv(filename)
+
+# Script Mode ------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()

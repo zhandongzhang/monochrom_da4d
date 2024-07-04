@@ -1,0 +1,93 @@
+!--------------------------------------------------------------
+! Example FCC-ee MAD-X script
+! This script prepares the {{operation_mode}} lattice.
+! The thick sequences is loaded and optics functions are saved to a twiss files.
+! Tapering will be applied, and the sequence will be saved to a file.
+!--------------------------------------------------------------
+
+SET, FORMAT="19.15f";
+option,update_from_parent=true; // new option in mad-x as of 2/2019
+
+!--------------------------------------------------------------
+! Lattice selection and beam parameters
+!--------------------------------------------------------------
+
+CALL, FILE="../../lattices/{{operation_mode}}/fccee_{{operation_mode}}.seq";
+
+pbeam :=   {{reference['ENERGY']}};
+EXbeam = {{reference['EMITTANCE_X']}};
+EYbeam = {{reference['EMITTANCE_Y']}};
+Nbun :=    {{reference['BUNCHES']}};
+NPar :=   {{reference['BUNCH_POPULATION']}};
+HalfCrossingAngle = 0.5*THETA_CROSS;
+
+Ebeam := sqrt( pbeam^2 + emass^2 );
+
+// Beam defined without radiation as a start - radiation is turned on later depending on the requirements
+BEAM, PARTICLE=ELECTRON, NPART=Npar, KBUNCH=Nbun, ENERGY=Ebeam, RADIATE=FALSE, BV=+1, EX=EXbeam, EY=EYbeam;
+
+USE, SEQUENCE = FCCEE_P_RING;
+! CALL, FILE="../../toolkit/install_matching_markers.madx";
+! CALL, FILE="../../toolkit/hfd_macros.madx";
+SAVE, SEQUENCE=FCCEE_P_RING, FILE="fcc_ee_{{operation_mode}}_b1_nottapered.seq";
+
+!--------------------------------------------------------------
+! Load aperture definitions and perform sequence edits
+!--------------------------------------------------------------
+
+// Load the aperture definition
+CALL, FILE="../../aperture/FCCee_aper_definitions.madx";
+
+!-------------------------------------------------------------------------------
+! Perform initial TWISS and survey in an ideal machine without radiation
+!-------------------------------------------------------------------------------
+
+USE, SEQUENCE = FCCEE_P_RING;
+
+// Save the voltage settings for the cavities for later use if needed
+VOLTCA1SAVE = VOLTCA1; 
+VOLTCA2SAVE = VOLTCA2; 
+
+SHOW, VOLTCA1SAVE, VOLTCA2SAVE;
+
+// Turn off the cavities for ideal machine twiss and survey
+VOLTCA1 = 0;
+VOLTCA2 = 0;
+
+// Place where the initial conditions are saved - used for RF matching later if needed
+SAVEBETA, LABEL=B.IP, PLACE=IP.1, SEQUENCE=FCCEE_P_RING;
+
+TWISS, FILE = "twiss_{{operation_mode}}_b1_nottapered.tfs"; ! Twiss without radiation and tapering
+APERTURE, HALO={6,6,6,6}, COR=250e-6, DP=0, BBEAT=1.1, DPARX=0, DPARY=0, DQF=0.25, BETAQFX=93, FILE="aperture_{{operation_mode}}_b1_nottapered.tfs"; //on-momentum parameters
+
+!-------------------------------------------------------------------------------
+! Perform RF matching and tapering if radiation is on
+!-------------------------------------------------------------------------------
+
+// RF back on
+VOLTCA1 = VOLTCA1SAVE;
+VOLTCA2 = VOLTCA2SAVE;
+
+// Turn the beam radiation on. N.B. This simple toggle works only if the sequence is not defined in the original beam command.
+BEAM, RADIATE=TRUE;
+
+// RF matching
+MATCH, sequence=FCCEE_P_RING, BETA0 = B.IP, tapering;
+  VARY, NAME=LAGCA1, step=1.0E-7;
+  VARY, NAME=LAGCA2, step=1.0E-7;
+  CONSTRAINT, SEQUENCE=FCCEE_P_RING, RANGE=#e, PT=0.0;
+  JACOBIAN,TOLERANCE=1.0E-14, CALLS=3000;
+ENDMATCH;
+
+// Twiss with tapering
+USE, SEQUENCE = FCCEE_P_RING;
+
+
+TWISS, TAPERING, file="twiss_{{operation_mode}}_b1_tapered.tfs";
+APERTURE, HALO={6,6,6,6}, COR=250e-6, DP=0, BBEAT=1.1, DPARX=0, DPARY=0, DQF=0.25, BETAQFX=93, FILE="aperture_{{operation_mode}}_b1_tapered.tfs"; //on-momentum parameters
+
+EMIT, DELTAP=0.0;
+WRITE, TABLE=emit, FILE="emittab_{{operation_mode}}.tfs";
+WRITE, TABLE=emitsumm, FILE="emitsums_{{operation_mode}}.tfs";
+
+SAVE, SEQUENCE=FCCEE_P_RING, FILE="fcc_ee_{{operation_mode}}_b1_tapered.seq";

@@ -1,0 +1,300 @@
+import json
+from pathlib import Path
+import numpy as np
+import pandas as pd
+
+import xtrack as xt
+import xpart as xp
+import xobjects as xo
+import xfields as xf
+import xdyna as xd
+
+REPOSITORY_TOP_LEVEL = Path(__file__).resolve().parent.parent.parent
+REFERENCE_FILE = json.load(open(REPOSITORY_TOP_LEVEL/"reference_parameters.json"))
+
+MODE = '{{operation_mode}}'
+
+LATTICE = REFERENCE_FILE['LATTICE']
+
+SR, BB, BS, BHABHA = 1, 0, 0, 0
+
+def make_bb_lens(nb, phi, sigma_z, alpha, n_slices, other_beam_q0,
+                  sigma_x, sigma_px, sigma_y, sigma_py, beamstrahlung_on=False, compt_x_min=1, binning_mode="unicharge"):
+
+    slicer = xf.TempSlicer(n_slices=n_slices, sigma_z=sigma_z, mode=binning_mode)
+
+    el_beambeam = xf.BeamBeamBiGaussian3D(
+            config_for_update = None,
+            other_beam_q0=other_beam_q0,
+            phi=phi, # half-crossing angle in radians
+            alpha=alpha, # crossing plane
+            # decide between round or elliptical kick formula
+            min_sigma_diff = 1e-28,
+            # slice intensity [num. real particles] n_slices inferred from length of this
+            slices_other_beam_num_particles = slicer.bin_weights * nb,
+            # unboosted strong beam moments
+            slices_other_beam_zeta_center = slicer.bin_centers,
+            slices_other_beam_Sigma_11    = n_slices*[sigma_x**2], # Beam sizes for the other beam, assuming the same is approximation
+            slices_other_beam_Sigma_22    = n_slices*[sigma_px**2],
+            slices_other_beam_Sigma_33    = n_slices*[sigma_y**2],
+            slices_other_beam_Sigma_44    = n_slices*[sigma_py**2],
+            # only if BS on
+            slices_other_beam_zeta_bin_width_star_beamstrahlung = None if not beamstrahlung_on else slicer.bin_widths_beamstrahlung / np.cos(phi),  # boosted dz
+            # has to be set
+            slices_other_beam_Sigma_12    = n_slices*[0],
+            slices_other_beam_Sigma_34    = n_slices*[0],
+            compt_x_min = compt_x_min,
+        )
+    el_beambeam.iscollective = False # Disable in twiss
+
+    return el_beambeam
+
+
+def insert_beambeam_elements(line, bb_def_list, twiss_table, emit):
+
+    print(f"Beam-beam definitions provided, installing beam-beam elements at: {', '.join([bbd['at_element'] for bbd in bb_def_list])}")
+
+    for bb_def in bb_def_list:
+        element_name = bb_def['at_element']
+ 
+        # the beam-beam lenses are thin and have no effects on optics so no need to re-compute twiss
+        element_twiss_index = list(twiss_table.name).index(element_name)
+
+        # get the line index every time as it changes when elements are installed
+        element_line_index = line.element_names.index(element_name)
+        sigmas = twiss_table.get_betatron_sigmas(*emit if hasattr(emit, '__iter__') else (emit, emit))
+
+        bb_elem = make_bb_lens(nb=float(bb_def['bunch_intensity']),
+                                phi=float(bb_def['crossing_angle']),
+                                sigma_z=float(bb_def['sigma_z']),
+                                n_slices=int(bb_def['n_slices']),
+                                other_beam_q0=int(bb_def['other_beam_q0']),
+                                alpha=bb_def['alpha'], # Put it to zero, it is okay for this use case
+                                sigma_x =np.sqrt(sigmas['Sigma11'][element_twiss_index]),
+                                sigma_px=np.sqrt(sigmas['Sigma22'][element_twiss_index]),
+                                sigma_y =np.sqrt(sigmas['Sigma33'][element_twiss_index]),
+                                sigma_py=np.sqrt(sigmas['Sigma44'][element_twiss_index]),
+                                beamstrahlung_on=bb_def['beamstrahlung'], compt_x_min=bb_def["compt_x_min"], binning_mode=bb_def["binning_mode"])
+
+        line.insert_element(index=element_line_index,
+                            element=bb_elem,
+                            name=f'beambeam_{element_name}')
+
+def load_file_and_set_beam(sequence_file):
+
+    filename = Path(sequence_file)
+    # Load json
+    with open(filename, 'r', encoding='utf-8') as fid:
+        loaded_dct = json.load(fid)
+    line = xt.Line.from_dict(loaded_dct)
+
+    ref_particle = xp.Particles(
+        mass0=xp.ELECTRON_MASS_EV,
+        q0=1,
+        p0c=REFERENCE_FILE[MODE]['ENERGY']*10**9
+        )
+    line.particle_ref = ref_particle
+    line.config.XTRACK_USE_EXACT_DRIFTS = True
+
+    return line, ref_particle
+
+def main():
+
+    line, ref_particle = load_file_and_set_beam(f"fcc_ee_{MODE}_b1_thin_rf.json")
+
+    if BB:
+        emit_y = REFERENCE_FILE[MODE]['EMITTANCE_Y_COLL']
+        if BS:
+            sigma_z = REFERENCE_FILE[MODE]['SIGMA_Z_BS']
+            filename = f"OIDE_daxy_{MODE}_xsuite_{LATTICE}_{REFERENCE_FILE[MODE]['DA_XY']['TURNS']}turns_SRandBBandBS.csv"
+        else:
+            sigma_z = REFERENCE_FILE[MODE]['SIGMA_Z_SR']
+            filename = f"OIDE_daxy_{MODE}_xsuite_{LATTICE}_{REFERENCE_FILE[MODE]['DA_XY']['TURNS']}turns_SRandBB.csv"
+    else:
+        emit_y = REFERENCE_FILE[MODE]['EMITTANCE_Y']
+        sigma_z = REFERENCE_FILE[MODE]['SIGMA_Z_SR']
+        filename = f"OIDE_daxy_{MODE}_xsuite_{LATTICE}_{REFERENCE_FILE[MODE]['DA_XY']['TURNS']}turns_SR.csv"
+
+    print(f'sigma_z is {sigma_z:.4e}')
+
+    line.cycle('frf.1', inplace=True)
+    
+    run_longitudinal(ref_particle=ref_particle, line=line, filename=filename, emit_y=emit_y, sigma_z=sigma_z)
+
+def init_DA(x_coord, px_coord, y_coord, py_coord, delta_coord, phi_coord):
+    DA_data = pd.DataFrame()
+    DA_data['x_norm_in'] = x_coord.flatten()
+    DA_data['px_norm_in'] = px_coord.flatten()
+    DA_data['y_norm_in'] = y_coord.flatten()
+    DA_data['py_norm_in'] = py_coord.flatten()
+    DA_data['z_in'] = 0
+    DA_data['delta_in'] = delta_coord.flatten()
+    DA_data['r_xy_in'] = np.sqrt(DA_data['x_norm_in']**2 + DA_data['y_norm_in']**2)
+    DA_data['r_xpxypy_in'] = np.sqrt(DA_data['x_norm_in']**2 + DA_data['px_norm_in']**2 + DA_data['y_norm_in']**2 + DA_data['py_norm_in']**2)
+    DA_data['ang_xy_in'] = np.arctan2(DA_data['y_norm_in'], DA_data['x_norm_in'])*180/np.pi
+    
+    DA_data['phi'] = phi_coord.flatten()
+
+    DA_data['x_out'] = float(-1)
+    DA_data['y_out'] = float(-1)
+    DA_data['px_out'] = float(-1)
+    DA_data['py_out'] = float(-1)
+    DA_data['z_out'] = float(-1)
+    DA_data['delta_out'] = float(-1)
+    DA_data['s_out'] = float(-1)
+    DA_data['n_turns'] = float(-1)
+    
+    return DA_data
+
+def find_indices(m, tot_lista):
+    indices = []
+    for i in range(len(m)):
+        for ii, arr in enumerate(tot_lista):
+            if m[i] == arr[i]:
+                break
+            elif ii == len(tot_lista)-1 and m[i]!=arr[i]:
+                indices.append(i)
+    return indices
+
+def run_longitudinal(ref_particle, line, filename, emit_y, sigma_z):
+
+    nturns = REFERENCE_FILE[MODE]['DA_XY']['TURNS']
+    
+    line.particle_ref = ref_particle
+    # build tracker on chosen context
+    context = xo.ContextCpu()
+    line.build_tracker(_context=context)
+    line.configure_radiation(model=None)
+
+    # DA with more phases
+    # phi = [0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi, -np.pi/4, -np.pi/2, -3*np.pi/4]
+    # DA with only y and py
+    phi = [0, np.pi/2, np.pi, -np.pi/2]
+
+    XX = np.round(np.arange(
+        REFERENCE_FILE[MODE]['DA_XY']['Z_RANGE'][0],
+        REFERENCE_FILE[MODE]['DA_XY']['Z_RANGE'][-1]+REFERENCE_FILE[MODE]['DA_XY']['Z_STEP'], 
+        REFERENCE_FILE[MODE]['DA_XY']['Z_STEP']
+        ),14)
+    XXX = np.repeat(XX, len(phi))
+    l_phi = np.round(np.array(phi*len(XX)),14)
+    diff = np.ones(len(XXX))*8
+    a = np.zeros(len(XXX)) # lower is Jmin = 0
+    b = np.ones(len(XXX))*REFERENCE_FILE[MODE]['DA_XY']['J_RANGE'][-1]
+    loop = 0
+    tot_lista = [np.ones(len(XXX))*99]
+    DA_data_save = pd.DataFrame()
+    while (diff > 2).sum():
+
+        m = np.floor((a + b) / 2).astype(int)
+        indices = find_indices(m, tot_lista)
+
+        if len(indices) != 0:
+
+            line.build_tracker(_context=context)
+            line.configure_radiation(model=None)
+            
+            m_x = np.round(m * np.cos(l_phi), 14)
+            m_px = np.round(m * np.sin(l_phi), 14)
+            DA_data_n = init_DA(XXX[indices], np.zeros(len(XXX[indices])), m_x[indices], m_px[indices], np.zeros(len(XXX[indices])), l_phi[indices])
+            particles = line.build_particles(
+                x_norm=XXX[indices].flatten(), px_norm=0,
+                y_norm=m_x[indices].flatten(), py_norm=m_px[indices].flatten(),
+                nemitt_x=REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0],
+                nemitt_y=2e-3*REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0], # normalized emittances
+                zeta=0, delta=0)
+
+            line.track(particles, num_turns=nturns, time=True,freeze_longitudinal=True)
+            particles.sort(interleave_lost_particles=True)
+            print(f'Tracked in {line.time_last_track} seconds')
+            sort = np.argsort(particles.particle_id)
+            DA_data_n.loc[sort, 'x_out'] = particles.x[sort]
+            DA_data_n.loc[sort, 'px_out'] = particles.px[sort]
+            DA_data_n.loc[sort, 'y_out'] = particles.y[sort]
+            DA_data_n.loc[sort, 'py_out'] = particles.py[sort]
+            DA_data_n.loc[sort, 'z_out'] = particles.zeta[sort]
+            DA_data_n.loc[sort, 'delta_out'] = particles.delta[sort]
+            DA_data_n.loc[sort, 's_out'] = particles.s[sort]
+            DA_data_n.loc[sort, 'n_turns'] = particles.at_turn[sort]
+        else:
+            break
+        
+        diff = abs(b - a)
+        for ii in indices:
+            idd = DA_data_n[
+                (np.round(DA_data_n['x_norm_in'],14)==np.round(XXX[ii],14)) &
+                (np.round(DA_data_n['y_norm_in'],14)==np.round(m_x[ii],14)) & 
+                (np.round(DA_data_n['py_norm_in'],14)==np.round(m_px[ii],14)) &
+                (np.round(DA_data_n['phi'],14)==np.round(l_phi[ii],14))
+            ].index
+            if DA_data_n.iloc[idd, -1].values >= nturns:
+                a[ii] = m[ii]
+            else:
+                b[ii] = m[ii]
+
+        tot_lista.append(m.copy())
+        loop +=1
+        DA_data_save = pd.concat([DA_data_save, DA_data_n])
+
+        DA_data_save.to_csv(str(filename[:-4] + f'_{loop}.csv'), index=False)
+
+    DA_data_save.to_csv(filename)
+
+    y_step, tbd = REFERENCE_FILE[MODE]['DA_XY']['J_STEP'], []
+    for i in range(len(XXX)):
+        J_data_reshaped = np.array(tot_lista).reshape(loop+1, len(XXX))
+        last_J_data = J_data_reshaped[-1,i]
+        if last_J_data != 0:
+            for j in range(-3, 11):
+                if last_J_data+j*y_step not in J_data_reshaped[:,i] and last_J_data+j*y_step <= REFERENCE_FILE[MODE]['DA_XY']['J_RANGE'][-1] and last_J_data+j*y_step >= REFERENCE_FILE[MODE]['DA_XY']['J_RANGE'][0]:
+                    # Has not been tracked yet and will be tracked
+                    tbd.append([XXX[i], (last_J_data+j*y_step)*np.cos(l_phi[i]), (last_J_data+j*y_step)*np.sin(l_phi[i]), l_phi[i]]) 
+        else:
+            for j in range(1, 11):
+                if last_J_data+j*y_step not in J_data_reshaped[:,i]:
+                    # Has not been tracked yet and will be tracked
+                    tbd.append([XXX[i], (last_J_data+j*y_step)*np.cos(l_phi[i]), (last_J_data+j*y_step)*np.sin(l_phi[i]), l_phi[i]]) 
+
+    DA_data_n = init_DA(
+        np.array(tbd)[:,1].flatten(), np.array(tbd)[:,2].flatten(), np.array(tbd)[:,1].flatten(), np.array(tbd)[:,2].flatten(), np.array(tbd)[:,0].flatten(), np.array(tbd)[:,3].flatten()
+        )
+
+    DA_data_n = init_DA(
+        np.array(tbd)[:,0].flatten(),
+        np.zeros(len(np.array(tbd)[:,0].flatten())),
+        np.array(tbd)[:,1].flatten(),
+        np.array(tbd)[:,2].flatten(),
+        np.zeros(len(np.array(tbd)[:,0].flatten())),
+        np.array(tbd)[:,3].flatten()
+        )
+
+    line.build_tracker()
+    line.configure_radiation(model=None)
+    
+    particles = line.build_particles(
+        x_norm=np.array(tbd)[:,0].flatten(), px_norm=np.zeros(len(np.array(tbd)[:,0].flatten())),
+        y_norm=np.array(tbd)[:,1].flatten(), py_norm=np.array(tbd)[:,2].flatten(),
+        nemitt_x=REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0],
+        nemitt_y=2e-3*REFERENCE_FILE[MODE]['EMITTANCE_X']*ref_particle.beta0[0]*ref_particle.gamma0[0], # normalized emittances
+        zeta=0, delta=0)
+
+    line.track(particles, num_turns=nturns, time=True,freeze_longitudinal=True)
+    particles.sort(interleave_lost_particles=True)
+    print(f'Tracked in {line.time_last_track} seconds')
+    sort = np.argsort(particles.particle_id)
+    DA_data_n.loc[sort, 'x_out'] = particles.x[sort]
+    DA_data_n.loc[sort, 'px_out'] = particles.px[sort]
+    DA_data_n.loc[sort, 'y_out'] = particles.y[sort]
+    DA_data_n.loc[sort, 'py_out'] = particles.py[sort]
+    DA_data_n.loc[sort, 'z_out'] = particles.zeta[sort]
+    DA_data_n.loc[sort, 'delta_out'] = particles.delta[sort]
+    DA_data_n.loc[sort, 's_out'] = particles.s[sort]
+    DA_data_n.loc[sort, 'n_turns'] = particles.at_turn[sort]
+
+    DA_data_save = pd.concat([DA_data_save, DA_data_n])
+    DA_data_save.to_csv(filename)
+
+# Script Mode ------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()

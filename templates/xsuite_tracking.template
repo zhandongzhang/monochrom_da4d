@@ -1,0 +1,53 @@
+import json
+from pathlib import Path
+
+import xtrack as xt
+import xpart as xp
+import xobjects as xo
+import numpy as np
+
+REPOSITORY_TOP_LEVEL = Path(__file__).resolve().parent.parent.parent
+REFERENCE_FILE = json.load(open(REPOSITORY_TOP_LEVEL/"reference_parameters.json"))
+
+MODE = '{{operation_mode}}'
+
+def main():
+
+    filename = Path(f"fcc_ee_{MODE}_b1_thin_rf.json")
+    # Load json
+    with open(filename, 'r', encoding='utf-8') as fid:
+        loaded_dct = json.load(fid)
+    line = xt.Line.from_dict(loaded_dct)
+    context = xo.ContextCpu()
+    ref_particle = xp.Particles(
+        mass0=xp.ELECTRON_MASS_EV,
+        q0=1,
+        p0c=REFERENCE_FILE[MODE]['ENERGY']*10**9
+        )
+    line.particle_ref = ref_particle
+
+    line.build_tracker(_context=context)
+    line.config.XTRACK_USE_EXACT_DRIFTS = True
+
+    line.configure_radiation(model='mean')
+    line.compensate_radiation_energy_loss()
+    twiss = line.twiss(eneloss_and_damping=True, method="6d")
+
+    rho = 1/(twiss.eneloss_turn/1e3/88.5/REFERENCE_FILE[MODE]['ENERGY']**4)
+    s_delta = np.sqrt(3.832e-13*(REFERENCE_FILE[MODE]['ENERGY']*10**9/511e3)**2/twiss.partition_numbers[2]/rho)
+    #w_s = np.sqrt(twiss.eneloss_turn/(REFERENCE_FILE[MODE]['ENERGY']*10**9)*400e6*twiss.T_rev0*twiss.momentum_compaction_factor)
+    s_z = twiss.eq_gemitt_zeta/s_delta #twiss.momentum_compaction_factor*twiss.circumference/w_s*s_delta
+
+    with open(f'emittances_{MODE}_xsuite.csv', 'w') as f:
+        f.write(f'{twiss.eq_gemitt_x}, {twiss.eq_gemitt_y}, {twiss.eq_gemitt_zeta}')    
+    
+    with open(f'global_param_{MODE}_xsuite.csv', 'w') as f:
+            f.write(f'{np.min(twiss.betx)}, {np.min(twiss.bety)}, {twiss.qx}, {twiss.qy}, {twiss.qs}, {twiss.dqx}, {twiss.dqy}, {twiss.momentum_compaction_factor}, {twiss.eneloss_turn}, {twiss.damping_constants_turns}, {rho}, {s_delta}, {s_z}, {twiss.circumference}')    
+
+    twiss_df = twiss.to_pandas()
+    twiss_df.to_csv(f'twiss_{MODE}_xsuite.csv')
+
+# Script Mode ------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()

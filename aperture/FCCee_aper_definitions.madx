@@ -1,0 +1,488 @@
+! Aperture model for FCC-ee
+! First version:
+!# mlu -- 11-28-2017 -- new aperture information after splitting around IP. Based on aperture information regarding IR region as disussed in fcc-ee MDI
+!# https://indico.cern.ch/event/596695/contributions/2415005/attachments/1397403/2132566/FCC_IR_Update_18Jan2017_workshop_sullivan.pdf slide 9/24
+!# mlu -- 02-19-2018 -- Based on MDI workshop and talk from Mike Sullivan: new beam-pipe dimension in IR:
+!#  centralChamber  15 mm
+!#  QC1             15 mm
+!#  QC2             20 mm
+!#  outside QC2     30 mm
+!#
+!# tapering added by suing markers PQC2RE and PQC2LE
+! Update after FCC Week 2021
+! Apertures in the IR follow presentations from FCC-Week 2021 https://indico.cern.ch/event/995850/contributions/4403838/attachments/2274286/3863143/MDI_fccweek21_mboscolo.pdf
+! Arc magnets and tolerances from https://indico.cern.ch/event/1030701/contributions/4327716/attachments/2235804/3789454/FCC-ee_aperture_studies_Moudgalya.pdf
+! Here, only the apertures for the parent classes are defined, elements will only inherit the information if OPTION, UPDATE_FROM_PARENT=True; is added in the MAD-X script
+
+! beam screen dimensions
+InnerBpipeRadiusIP      = 0.010 ;
+InnerBpipeRadiusQC1     = 0.015 ;
+InnerBpipeRadiusQC2     = 0.020 ;
+BpipeRadiusArcs         = 0.030 ; ! following the 160th FCC-ee optics meeting https://indico.cern.ch/event/1217166/ , beampipe aperture will be reduced from 35 to 30mm, to reduce power consumption
+BpipeRadiusBWL          = 0.045 ; ! increase of beampipe in BWL to increase beamstayclear, discussion here https://indico.cern.ch/event/1118304/ , for now, all 100m of BWL have the larger beamscreen, exact length of the widened area has to be looked into, accounting also for SR background in exp. and absorber placement
+
+! mechanical tolerances
+transvers_arc_quads = 50E-6; 
+angle_arc_quads = 100E-6;
+length_arc_quads = 2.9;
+tolerance_arc_quads = transvers_arc_quads + length_arc_quads*sin(angle_arc_quads);
+
+transvers_arc_sexts = 50E-6;
+angle_arc_sexts = 100E-6; 
+length_arc_sexts = 1.4;
+tolerance_arc_sexts = transvers_arc_sexts + length_arc_sexts*sin(angle_arc_sexts);
+
+transvers_dipoles = 1000E-6;
+angle_dipoles = 0;
+length_dipoles = 23;
+tolerance_dipoles = transvers_dipoles + length_dipoles*sin(angle_dipoles);
+
+transvers_ir_quads = 75E-6;
+angle_ir_quads = 75E-6; 
+length_ir_qc345 = 3.5;
+length_ir_qc2 = 1.25;
+length_ir_other = 1.00;
+tolerance_ir_qc345 = transvers_ir_quads + length_ir_qc345*sin(angle_ir_quads);
+tolerance_ir_qc2 = transvers_ir_quads + length_ir_qc2*sin(angle_ir_quads);
+tolerance_ir_other = transvers_ir_quads + length_ir_other*sin(angle_ir_quads);
+
+transvers_ir_sexts = 75E-6;
+angle_ir_sexts = 75E-6; 
+length_ir_sexts = 0.15;
+tolerance_ir_sexts = transvers_ir_sexts + length_ir_sexts*sin(angle_ir_sexts);
+
+
+! IP ---------------------------------------------------------------------------
+
+QL4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BL4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QL3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BL3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QL2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BL2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QL1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BL1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QB6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QB5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QB4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QB3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QB2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QB1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+SY2L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_sexts, tolerance_ir_sexts};
+BC5L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QY2L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BC4L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QY1L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BC3L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+BC2L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+SY1L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_sexts, tolerance_ir_sexts};
+
+QC7L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QC6L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+QC5L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+BC1L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusBWL },  APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QC4L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusBWL },  APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+BWL,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusBWL },  APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QC3L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+QT1L,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+
+PQC2LE,     APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 };
+
+QC2L2,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 }, APER_TOL={0, tolerance_ir_qc2, tolerance_ir_qc2};
+QC2L1,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 }, APER_TOL={0, tolerance_ir_qc2, tolerance_ir_qc2};
+
+QC1L3,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+QC1L2,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+QC1L1,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+
+IP,         APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusIP }; ! technically, this should be multiplied by a factor cos(XingAngle/2), but it is sufficiently close to 1 to be neglected
+
+QC1R1,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+QC1R2,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+QC1R3,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC1 }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+
+QC2R1,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 }, APER_TOL={0, tolerance_ir_qc2, tolerance_ir_qc2};
+QC2R2,      APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 }, APER_TOL={0, tolerance_ir_qc2, tolerance_ir_qc2};
+
+PQC2RE,     APERTYPE=CIRCLE,    APERTURE:={InnerBpipeRadiusQC2 };
+
+QT1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_other, tolerance_ir_other};
+QC3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+QC4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+BC1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QC5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+BC2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QC6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_qc345, tolerance_ir_qc345};
+BC3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QC7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+SY1R,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_sexts, tolerance_ir_sexts};
+BC4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QY2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BC5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QY1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BC6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+BC7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+SY2R,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_ir_sexts, tolerance_ir_sexts};
+QA1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QA2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QA3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QA4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QA5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QA6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BS1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QS1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BS2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QS2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BS3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QS3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+FG,         APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+
+SF1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+QFG2,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QDG1,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+SD1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+QG1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BG9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QG9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BGA,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+
+! Wigglers --------------------------------------------------------------------
+
+MWIM,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+MWIP,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+
+! RF --------------------------------------------------------------------------
+
+QH7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QH6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QH5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BWR,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+
+QU8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QU1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFR1,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+QRDR1,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFR2,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDR2,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFR3,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDR3,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFR4,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDR4,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFR5,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDR5,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRF,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+FRF,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+
+QRDL5,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFL5,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDL4,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFL4,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDL3,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFL3,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDL2,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFL2,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRDL1,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QRFL1,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+BSEP,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+
+QI1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BI1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QI2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QI8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+BI4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QI9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QIA,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+
+! AUX IR -----------------------------------------------------------------------
+BDS,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+
+!   IR B/H ---------------------------------------------------------------------
+QN61,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN0,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QN7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QNA,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QNA1,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+!   IR F/J ---------------------------------------------------------------------
+QM6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM5I,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM4I,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM3I,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM2I,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM1I,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM0,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QM7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QMA,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+
+
+! ARC --------------------------------------------------------------------------
+
+FD0A,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+QD3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+B1,         APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+QF4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+B1L,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+B1S,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_dipoles, tolerance_dipoles};
+SD3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FDIA,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+SF4,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF5,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF6,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF7,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF8,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF9,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD10,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF10,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD11,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF11,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD12,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FD3A,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+
+FD1A,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+SD13,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF12,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD14,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF13,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD15,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF14,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD16,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF15,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD17,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF16,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD18,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF17,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD19,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF18,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD20,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF19,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD21,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF20,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD22,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF21,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD23,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF22,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD24,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF23,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD25,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF24,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD26,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF25,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD27,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF26,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD28,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF27,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD29,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF28,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD30,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF29,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD31,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF30,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD32,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF31,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD33,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF32,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD34,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF33,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD35,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF34,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD36,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF35,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD37,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF36,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD38,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF37,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD39,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF38,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD40,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF39,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD41,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF40,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD42,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF41,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD43,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF42,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD44,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF43,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD45,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF44,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD46,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF45,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD47,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF46,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD48,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF47,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD49,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF48,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD50,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF49,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD51,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF50,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD52,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF51,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD53,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF52,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FD2A,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FF2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+QD1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+QF2,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_quads, tolerance_arc_quads};
+SD54,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF53,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD55,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF54,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD56,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF55,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD57,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF56,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD58,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF57,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD59,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF58,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD60,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF59,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD61,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF60,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD62,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF61,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD63,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF62,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD64,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF63,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD65,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF64,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD66,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF65,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD67,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF66,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD68,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF67,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD69,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF68,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD70,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF69,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD71,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF70,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD72,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF71,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD73,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF72,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD74,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF73,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD75,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF74,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD76,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF75,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD77,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF76,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD78,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF77,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD79,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF78,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD80,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF79,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD81,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF80,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD82,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF81,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD83,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF82,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD84,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF83,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD85,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF84,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD86,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF85,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD87,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF86,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD88,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF87,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD89,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF88,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD90,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF89,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD91,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF90,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD92,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF91,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD93,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF92,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD94,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF93,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FF1,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+
+FF3,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+SF94,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD95,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF95,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD96,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF96,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD97,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF97,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD98,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF98,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD99,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF99,       APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD100,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF100,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD101,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF101,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD102,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF102,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+FFI,        APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs };
+SD103,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF103,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SD104,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};
+SF104,      APERTYPE=CIRCLE,    APERTURE:={BpipeRadiusArcs }, APER_TOL={0, tolerance_arc_sexts, tolerance_arc_sexts};

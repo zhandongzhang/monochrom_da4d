@@ -1,0 +1,499 @@
+import matplotlib.pyplot as plt
+from matplotlib import patches
+from mpl_toolkits.axes_grid1 import host_subplot, make_axes_locatable
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
+from matplotlib.colors import LinearSegmentedColormap
+
+import json
+from pathlib import Path
+import numpy as np
+import pandas as pd
+from fractions import Fraction
+import xtrack as xt
+
+REPOSITORY_TOP_LEVEL = Path(__file__).resolve().parent.parent.parent
+REFERENCE_FILE = json.load(open(REPOSITORY_TOP_LEVEL/"reference_parameters.json"))
+
+MODE = '{{operation_mode}}'
+
+LATTICE = REFERENCE_FILE['LATTICE']
+
+filename = Path(f"fcc_ee_{MODE}_b1_thin_rf.json")
+# Load json
+with open(filename, 'r', encoding='utf-8') as fid:
+    loaded_dct = json.load(fid)
+line = xt.Line.from_dict(loaded_dct)
+
+def create_custom_colormap():
+    """ Create custom colormap to reproduce K.Oide's DA color scheme."""
+    # Number of colors in the new colormap
+    num_colors = 256
+
+    # Interpolation parameter for the transition from dark blue to blue
+    alpha_dark_blue = 0.4
+
+    # Define dark blue, blue, cyan, and white colors
+    dark = (0.0, 0.0, 0.2)
+    blue = (0.2, 0.2, 0.7)
+    cyan = (0.1, 0.8, 0.8)
+    white = (1.0, 1.0, 1.0)
+
+    # Interpolate between dark and blue up to the middle
+    colors_dark_blue = []
+    for i in range(int(num_colors * alpha_dark_blue)):
+        alpha = i / (num_colors * alpha_dark_blue - 1)
+        r_interp = (1 - alpha) * dark[0] + alpha * blue[0]
+        g_interp = (1 - alpha) * dark[1] + alpha * blue[1]
+        b_interp = (1 - alpha) * dark[2] + alpha * blue[2]
+        colors_dark_blue.append((r_interp, g_interp, b_interp))
+
+    # Interpolate between blue and cyan
+    colors_blue_cyan = []
+    for i in range(int(num_colors * (1 - alpha_dark_blue) / 2)):
+        alpha = i / (num_colors * (1 - alpha_dark_blue) / 2 - 1)
+        r_interp = (1 - alpha) * blue[0] + alpha * cyan[0]
+        g_interp = (1 - alpha) * blue[1] + alpha * cyan[1]
+        b_interp = (1 - alpha) * blue[2] + alpha * cyan[2]
+        colors_blue_cyan.append((r_interp, g_interp, b_interp))
+
+    # Interpolate between cyan and white
+    colors_cyan_white = []
+    for i in range(int(num_colors * (1 - alpha_dark_blue) / 2)):
+        alpha = i / (num_colors * (1 - alpha_dark_blue) / 2 - 1)
+        r_interp = (1 - alpha) * cyan[0] + alpha * white[0]
+        g_interp = (1 - alpha) * cyan[1] + alpha * white[1]
+        b_interp = (1 - alpha) * cyan[2] + alpha * white[2]
+        colors_cyan_white.append((r_interp, g_interp, b_interp))
+
+    # Combine the parts of the colormap
+    colors = colors_dark_blue + colors_blue_cyan + colors_cyan_white
+
+    custom_cmap = LinearSegmentedColormap.from_list('custom_bone', colors, num_colors)
+    return custom_cmap
+
+# Create the black-blue-cyan-white colormap
+custom_cmap = create_custom_colormap()
+
+DA_filename = f"OIDE_daxy_{MODE}_xsuite_{LATTICE}_{REFERENCE_FILE[MODE]['DA_XY']['TURNS']}turns_SR.csv"
+u = pd.read_csv(DA_filename)
+
+phi = set(u['phi'])
+phi_plus = np.sort(list(set(phi)))[int(len(phi)/2)-1:-1]
+phi_minus = np.hstack([np.array(np.sort(list(set(phi)))[-1]), np.sort(list(set(phi)))[:int(len(phi)/2)-1]])
+
+label = []
+for i in range(int(len(set(phi))/2)):
+    print(str(Fraction(i,int(len(set(phi))/2))))
+    if str(Fraction(i,int(len(set(phi))/2)))[0] == '0':
+        label.append(r'$\phi=$'+"0")
+    elif str(Fraction(i,int(len(set(phi))/2)))[0] == '1':
+        label.append(r'$\phi=\pi$'+f"{str(Fraction(i,int(len(set(phi))/2)))[1:]}")
+    else:
+        label.append(r'$\phi=$'+f"{str(Fraction(i,int(len(set(phi))/2)))[:1]}"+r'$\pi$'+f'{str(Fraction(i,int(len(set(phi))/2)))[1:]}')
+
+
+gl = pd.read_csv(f'global_param_{MODE}_xsuite.csv', index_col=None, header=None)
+em = pd.read_csv(f'emittances_{MODE}_xsuite.csv', index_col=None, header=None)
+
+jmin = REFERENCE_FILE[MODE]['DA_XY']['J_PLOT']
+
+# Initialize variables to store the summed weighted counts and the total number of histograms
+summed_counts = np.zeros((len(list(set(u['x_norm_in']))), len(np.arange(-jmin, jmin+1, 1))))
+total_histograms = 0
+
+# Loop through the histograms and sum the weighted counts
+for iidx, idx in enumerate(np.round(phi_plus, 14)):
+    if idx in set(round(u['phi'],14)):
+        # Calculate the weighted counts for the current histogram
+        counts, _, _ = np.histogram2d(
+            u[round(u['phi'],14)==idx]['x_norm_in'].values,
+            np.sqrt(u[round(u['phi'],14)==idx]['y_norm_in'].values**2 + u[round(u['phi'],14)==idx]['py_norm_in'].values**2),
+            weights=u[round(u['phi'],14)==idx]['n_turns'],
+            bins=(len(list(set(u['x_norm_in']))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+    
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+for iidx, idx in enumerate(np.round(phi_minus, 14)):
+    if idx in set(round(u['phi'],14)):
+        # Calculate the weighted counts for the current histogram
+        counts, _, _ = np.histogram2d(
+            u[round(u['phi'],14)==idx]['x_norm_in'].values,
+            -np.sqrt(u[round(u['phi'],14)==idx]['y_norm_in'].values**2 + u[round(u['phi'],14)==idx]['py_norm_in'].values**2),
+            weights=u[round(u['phi'],14)==idx]['n_turns'],
+            bins=(len(list(set(u['x_norm_in']))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+    
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+# Average the counts
+average_counts = summed_counts / total_histograms * 2 # some histograms are J pos and J neg
+
+# Plot the averaged histogram
+plt.figure(dpi=150, figsize=(7,5.5))
+ax = plt.subplot()
+plt.imshow(
+    average_counts.T, extent=[min(u['x_norm_in']), max(u['x_norm_in']), -jmin, jmin],
+    vmax=max(u['n_turns']), origin='lower', cmap=custom_cmap, aspect='auto'
+)
+
+plt.colorbar(label='Turns survived', pad=0.01)
+plt.grid(ls='--')
+plt.xlabel(r'X [$\sigma_x$]')
+plt.ylabel(r'Normalised amplitude A$_y(\phi)$')
+
+secax_x2 = ax.secondary_xaxis(-.15, functions=(lambda x: 1e3*x*np.sqrt(em[0].values[0]*85), lambda x: x*1e2))
+secax_x2.set_xlabel(r'X [mm]')
+ax.yaxis.set_minor_locator(MultipleLocator(5))
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+secax_x2.xaxis.set_minor_locator(MultipleLocator(0.25))
+
+line_tab = line.get_table()
+var_tab = line.vars.get_table()
+line_tab_cavity = line_tab.rows[(line_tab.element_type == 'Cavity')]
+
+plt.suptitle(
+    str(f"{LATTICE} | " r"E$_{\rm{beam}}$=" f"{REFERENCE_FILE[MODE]['ENERGY']} GeV," r" I$_{\rm{beam}}$=" 
+        f"{int(50e6/gl[8].values[0]*1e3)}mA (N={round(50e6/gl[8].values[0]*1e3,0)/1E3*gl[13].values[0]/2.998E8/1.602e-19/REFERENCE_FILE[MODE]['BUNCHES']:.2E}ppb),"
+        f" {int(max(u['n_turns']))} turns\n"
+
+        r"$\rm{\varepsilon}_x$" f"={np.round(1e9*em[0].values[0],2):.2f}nm.rad, " r"$\rm{\varepsilon}_y/\rm{\varepsilon}_x=2$" u"‰,"
+        r" $\sigma_\delta$=" f"{round(1e2*gl[11].values[0],3):.3f}%, " r"$\sigma_z$=" f"{round(1e3*gl[12].values[0],1):.1f}mm," 
+        r" $\rm{\beta}_{x,y}^*$={" f"{round(gl[0].values[0],1):.2f}m, {round(1e3*gl[1].values[0],1):.1f}mm" "}\n"
+        
+        r"V$_{rf}$ 400|800MHz=" f"{round(var_tab.rows['voltca1'].value[0]*len(line_tab_cavity.rows['ca1.*'])/1e3,2) if 'voltca1' in var_tab.name else 0:.2f}GV|{round(var_tab.rows['voltca2'].value[0]*len(line_tab_cavity.rows['ca2.*'])/1e3,2) if 'voltca2' in var_tab.name else 0:.2f}GV,"
+        r" Q$_{x|y|s}$=" "{" f"{round(gl[2].values[0],3):.3f}, {round(gl[3].values[0],3):.3f}, {round(gl[4].values[0],3):.3f}" "},"
+        f" Crab waist={int(1e2*REFERENCE_FILE[MODE]['CRABBING_FACTOR'])}%"
+       ), fontsize=10, y= .95
+)
+
+plt.tight_layout()
+plt.savefig(f'DA_xy_{MODE}_{LATTICE}_xsuite.png', dpi=200, bbox_inches='tight')
+
+
+def fill_OIDE_DA(filename, phi=0):
+    """ Function to fill the inside of the DA plot """
+    xx, yy, h = [], [], []
+    u = pd.read_csv(filename)
+    u = u[u['phi']==round(phi,14)]
+    u['j'] = np.sqrt(u.y_norm_in**2 + u.py_norm_in**2)
+    u.sort_values(by=['x_norm_in', 'j'], inplace=True)
+    m_turns = max(u['n_turns'])
+    for i in np.sort(np.round(list(set(u['x_norm_in'])),14)):
+        mm = max(u[round(u['x_norm_in'],14)==round(i,14)]['n_turns'])
+        reached = 0
+        for j in np.arange(0, jmin+REFERENCE_FILE[MODE]["DA_XZ"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XZ"]["J_STEP"]):
+            xx.append(i); yy.append(j)
+            if np.any(u[(round(u['x_norm_in'],14)==round(i,14)) & (round(u['j'],14)==round(j,14))]):
+                if u[(round(u['x_norm_in'],14)==round(i,14)) & (round(u['j'],14)==round(j,14))]['n_turns'].values[0] >= mm:
+                    mm = u[(round(u['x_norm_in'],14)==round(i,14)) & (round(u['j'],14)==round(j,14))]['n_turns'].values[0]
+                else:
+                    reached = 1
+                h.append(u[(round(u['x_norm_in'],14)==round(i,14)) & (round(u['j'],14)==round(j,14))]['n_turns'].values[0])
+            elif reached == 0:
+                h.append(mm)
+            else:
+                h.append(0)
+    return np.array(h), np.array(xx), np.array(yy), m_turns
+
+
+
+# Initialize variables to store the summed weighted counts and the total number of histograms
+summed_counts = np.zeros((len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+1,1))))
+total_histograms = 0
+
+# Loop through the histograms and sum the weighted counts
+for iidx, idx in enumerate(np.round(phi_plus, 14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+            xx, yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+    
+for iidx, idx in enumerate(np.round(phi_minus, 14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+        xx, -yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+# Average the counts
+average_counts = summed_counts / total_histograms * 2 # some histograms are J pos and J neg
+
+# Plot the averaged histogram
+plt.figure(dpi=150, figsize=(7,5.5))
+ax = plt.subplot()
+plt.imshow(
+    average_counts.T, extent=[min(u['x_norm_in']), max(u['x_norm_in']), -jmin, jmin],
+    vmax=max(u['n_turns']), origin='lower', cmap=custom_cmap, aspect='auto', interpolation="bilinear"
+)
+
+plt.colorbar(label='Turns survived', pad=0.01)
+plt.grid(ls='--')
+plt.xlabel(r'X [$\sigma_x$]')
+plt.ylabel(r'Normalised amplitude A$_y(\phi)$')
+
+
+secax_x2 = ax.secondary_xaxis(-.15, functions=(lambda x: 1e3*x*np.sqrt(em[0].values[0]*85), lambda x: x*1e2))
+secax_x2.set_xlabel('X [mm]')
+ax.yaxis.set_minor_locator(MultipleLocator(5))
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+secax_x2.xaxis.set_minor_locator(MultipleLocator(0.25))
+
+line_tab = line.get_table()
+var_tab = line.vars.get_table()
+line_tab_cavity = line_tab.rows[(line_tab.element_type == 'Cavity')]
+
+plt.suptitle(
+    str(f"{LATTICE} | " r"E$_{\rm{beam}}$=" f"{REFERENCE_FILE[MODE]['ENERGY']} GeV," r" I$_{\rm{beam}}$=" 
+        f"{int(50e6/gl[8].values[0]*1e3)}mA (N={round(50e6/gl[8].values[0]*1e3,0)/1E3*gl[13].values[0]/2.998E8/1.602e-19/REFERENCE_FILE[MODE]['BUNCHES']:.2E}ppb),"
+        f" {int(max(u['n_turns']))} turns\n"
+
+        r"$\rm{\varepsilon}_x$" f"={np.round(1e9*em[0].values[0],2):.2f}nm.rad, " r"$\rm{\varepsilon}_y/\rm{\varepsilon}_x=2$" u"‰,"
+        r" $\sigma_\delta$=" f"{round(1e2*gl[11].values[0],3):.3f}%, " r"$\sigma_z$=" f"{round(1e3*gl[12].values[0],1):.1f}mm," 
+        r" $\rm{\beta}_{x,y}^*$={" f"{round(gl[0].values[0],1):.2f}m, {round(1e3*gl[1].values[0],1):.1f}mm" "}\n"
+        
+        r"V$_{rf}$ 400|800MHz=" f"{round(var_tab.rows['voltca1'].value[0]*len(line_tab_cavity.rows['ca1.*'])/1e3,2) if 'voltca1' in var_tab.name else 0:.2f}GV|{round(var_tab.rows['voltca2'].value[0]*len(line_tab_cavity.rows['ca2.*'])/1e3,2) if 'voltca2' in var_tab.name else 0:.2f}GV,"
+        r" Q$_{x|y|s}$=" "{" f"{round(gl[2].values[0],3):.3f}, {round(gl[3].values[0],3):.3f}, {round(gl[4].values[0],3):.3f}" "},"
+        f" Crab waist={int(1e2*REFERENCE_FILE[MODE]['CRABBING_FACTOR'])}%"
+       ), fontsize=10, y= .95
+)
+
+plt.tight_layout()
+plt.savefig(f'DA_xy_{MODE}_{LATTICE}_xsuite_full.png', dpi=200, bbox_inches='tight')
+
+# Initialize variables to store the summed weighted counts and the total number of histograms
+summed_counts = np.zeros((len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+1,1))))
+total_histograms = 0
+
+# Loop through the histograms and sum the weighted counts
+for iidx, idx in enumerate(np.round(phi_plus, 14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+            xx, yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+    
+for iidx, idx in enumerate(np.round(phi_minus, 14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+        xx, -yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+# Average the counts
+average_counts = summed_counts / total_histograms * 2 # some histograms are J pos and J neg
+
+# Plot the averaged histogram
+plt.figure(dpi=150, figsize=(7,5.5))
+ax = plt.subplot()
+plt.imshow(
+    average_counts.T, extent=[min(u['x_norm_in']), max(u['x_norm_in']), -jmin, jmin],
+    vmax=max(u['n_turns']), origin='lower', cmap=custom_cmap, aspect='auto'
+)
+
+plt.colorbar(label='Turns survived', pad=0.01)
+plt.grid(ls='--')
+plt.xlabel(r'X [$\sigma_x$]')
+plt.ylabel(r'Normalised amplitude A$_y(\phi)$')
+
+
+secax_x2 = ax.secondary_xaxis(-.15, functions=(lambda x: 1e3*x*np.sqrt(em[0].values[0]*85), lambda x: x*1e2))
+secax_x2.set_xlabel('X [mm]')
+ax.yaxis.set_minor_locator(MultipleLocator(5))
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+secax_x2.xaxis.set_minor_locator(MultipleLocator(0.25))
+
+line_tab = line.get_table()
+var_tab = line.vars.get_table()
+line_tab_cavity = line_tab.rows[(line_tab.element_type == 'Cavity')]
+
+plt.suptitle(
+    str(f"{LATTICE} | " r"E$_{\rm{beam}}$=" f"{REFERENCE_FILE[MODE]['ENERGY']} GeV," r" I$_{\rm{beam}}$=" 
+        f"{int(50e6/gl[8].values[0]*1e3)}mA (N={round(50e6/gl[8].values[0]*1e3,0)/1E3*gl[13].values[0]/2.998E8/1.602e-19/REFERENCE_FILE[MODE]['BUNCHES']:.2E}ppb),"
+        f" {int(max(u['n_turns']))} turns\n"
+
+        r"$\rm{\varepsilon}_x$" f"={np.round(1e9*em[0].values[0],2):.2f}nm.rad, " r"$\rm{\varepsilon}_y/\rm{\varepsilon}_x=2$" u"‰,"
+        r" $\sigma_\delta$=" f"{round(1e2*gl[11].values[0],3):.3f}%, " r"$\sigma_z$=" f"{round(1e3*gl[12].values[0],1):.1f}mm," 
+        r" $\rm{\beta}_{x,y}^*$={" f"{round(gl[0].values[0],1):.2f}m, {round(1e3*gl[1].values[0],1):.1f}mm" "}\n"
+        
+        r"V$_{rf}$ 400|800MHz=" f"{round(var_tab.rows['voltca1'].value[0]*len(line_tab_cavity.rows['ca1.*'])/1e3,2) if 'voltca1' in var_tab.name else 0:.2f}GV|{round(var_tab.rows['voltca2'].value[0]*len(line_tab_cavity.rows['ca2.*'])/1e3,2) if 'voltca2' in var_tab.name else 0:.2f}GV,"
+        r" Q$_{x|y|s}$=" "{" f"{round(gl[2].values[0],3):.3f}, {round(gl[3].values[0],3):.3f}, {round(gl[4].values[0],3):.3f}" "},"
+        f" Crab waist={int(1e2*REFERENCE_FILE[MODE]['CRABBING_FACTOR'])}%"
+       ), fontsize=10, y= .95
+)
+
+plt.tight_layout()
+plt.savefig(f'DA_xy_{MODE}_{LATTICE}_xsuite_full_uninterpolated.png', dpi=200, bbox_inches='tight')
+
+
+plt.figure(dpi=150, figsize=(7,5.5))
+ax = plt.subplot()
+
+# Initialize variables to store the summed weighted counts and the total number of histograms
+summed_counts = np.zeros((len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+1,1))))
+total_histograms = 0
+
+# Loop through the histograms and sum the weighted counts
+for iidx, idx in enumerate(np.round(phi_plus, 14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+            xx, yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+        v = u[round(u['phi'],14)==idx][['x_norm_in', 'px_norm_in', 'y_norm_in', 'py_norm_in', 'n_turns']]
+        v['J'] = np.sqrt( v['y_norm_in']**2 +  v['py_norm_in']**2 )
+        v = v[v['n_turns']>0]
+        data_pts = []
+        nmax = v['n_turns'].max()
+        for i in np.sort(np.round(list(set(u['x_norm_in'])),14)):
+            w = v[(np.round(v['x_norm_in'],14)==np.round(i,14)) & (v['n_turns']==nmax)][['J', 'n_turns']].sort_values(by='J', ascending=True)
+            if np.round(i,14) in np.round(v['x_norm_in'].values,14) and len(w)>1:
+                for k in range(0, len(w)-1):
+                    if k > 0 and np.all(np.round(np.diff(w['J'].values[:-k])) == 1):
+                        data_pts.append([i, -w['J'].iloc[-k-1]])
+                        break
+                    elif k==0 and np.all(np.round(np.diff(w['J'].values[:])) == 1):
+                        data_pts.append([i, -w['J'].iloc[-1]])
+                        break
+                    if round(w['J'].iloc[-k])-1 == round(w['J'].iloc[-k-1]) and round(w['J'].iloc[-k-1])-1 == round(w['J'].iloc[-k-2]):
+                        data_pts.append([i, -w['J'].iloc[-k]])
+                        break
+            elif len(w)==1 and w['J'].iloc[-1]==1:
+                data_pts.append([i, -w['J'].iloc[-1]])
+            else:
+                data_pts.append([i,0])
+        plt.plot(np.array(data_pts)[:,0], -np.array(data_pts)[:,1], f'C{iidx}.-', label=label[iidx], alpha=.35)
+    
+plt.legend(framealpha=.6, loc="upper right")
+
+for iidx, idx in enumerate(np.round(phi_minus,14)):
+    if idx in set(round(u['phi'],14)):
+        h, xx, yy, m_turns = fill_OIDE_DA(DA_filename, phi=idx)
+        # Calculate the weighted counts for the current histogram
+        counts, _ , _ = np.histogram2d(
+        xx, -yy, bins=(len(set(np.round(u['x_norm_in'],14))), len(np.arange(-jmin, jmin+REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"], REFERENCE_FILE[MODE]["DA_XY"]["J_STEP"]))),
+            weights=h, range=[[min(u['x_norm_in']), max(u['x_norm_in'])], [-jmin, jmin]]
+        )
+        
+        # Update the summed counts
+        summed_counts += counts
+        total_histograms += 1
+
+        v = u[round(u['phi'],14)==idx][['x_norm_in', 'px_norm_in', 'y_norm_in', 'py_norm_in', 'n_turns']]
+        v['J'] = np.sqrt( v['y_norm_in']**2 +  v['py_norm_in']**2 )
+        v = v[v['n_turns']>0]
+        data_pts = []
+        nmax = v['n_turns'].max()
+        for i in np.sort(np.round(list(set(u['x_norm_in'])),14)):
+            w = v[(np.round(v['x_norm_in'],14)==np.round(i,14)) & (v['n_turns']==nmax)][['J', 'n_turns']].sort_values(by='J', ascending=True)
+            if np.round(i,14) in np.round(v['x_norm_in'].values,14) and len(w)>1:
+                for k in range(0, len(w)-1):
+                    if k > 0 and np.all(np.round(np.diff(w['J'].values[:-k])) == 1):
+                        data_pts.append([i, -w['J'].iloc[-k-1]])
+                        break
+                    elif k==0 and np.all(np.round(np.diff(w['J'].values[:])) == 1):
+                        data_pts.append([i, -w['J'].iloc[-1]])
+                        break
+                    if round(w['J'].iloc[-k])-1 == round(w['J'].iloc[-k-1]) and round(w['J'].iloc[-k-1])-1 == round(w['J'].iloc[-k-2]):
+                        data_pts.append([i, -w['J'].iloc[-k]])
+                        break
+            elif len(w)==1 and w['J'].iloc[-1]==1:
+                data_pts.append([i, -w['J'].iloc[-1]])
+            else:
+                data_pts.append([i,0])
+        plt.plot(np.array(data_pts)[:,0], np.array(data_pts)[:,1], f'C{iidx}.-', label=label[iidx], alpha=.35)
+    
+
+# Average the counts
+average_counts = summed_counts / total_histograms * 2 # some histograms are J pos and J neg
+
+# Plot the averaged histogram
+plt.imshow(
+    average_counts.T, extent=[min(u['x_norm_in']), max(u['x_norm_in']), -jmin, jmin],
+    vmax=max(u['n_turns']), origin='lower', cmap=custom_cmap, aspect='auto', interpolation="bilinear"
+)
+
+plt.colorbar(label='Turns survived', pad=0.01)
+plt.grid(ls='--')
+plt.xlabel(r'X [$\sigma_x$]')
+plt.ylabel(r'Normalised amplitude A$_y(\phi)$')
+
+secax_x2 = ax.secondary_xaxis(-.15, functions=(lambda x: 1e3*x*np.sqrt(em[0].values[0]*85), lambda x: x*1e2))
+secax_x2.set_xlabel(r'X [mm]')
+ax.yaxis.set_minor_locator(MultipleLocator(5))
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+secax_x2.xaxis.set_minor_locator(MultipleLocator(0.25))
+
+line_tab = line.get_table()
+var_tab = line.vars.get_table()
+line_tab_cavity = line_tab.rows[(line_tab.element_type == 'Cavity')]
+
+plt.suptitle(
+    str(f"{LATTICE} | " r"E$_{\rm{beam}}$=" f"{REFERENCE_FILE[MODE]['ENERGY']} GeV," r" I$_{\rm{beam}}$=" 
+        f"{int(50e6/gl[8].values[0]*1e3)}mA (N={round(50e6/gl[8].values[0]*1e3,0)/1E3*gl[13].values[0]/2.998E8/1.602e-19/REFERENCE_FILE[MODE]['BUNCHES']:.2E}ppb),"
+        f" {int(max(u['n_turns']))} turns\n"
+
+        r"$\rm{\varepsilon}_x$" f"={np.round(1e9*em[0].values[0],2):.2f}nm.rad, " r"$\rm{\varepsilon}_y/\rm{\varepsilon}_x=2$" u"‰,"
+        r" $\sigma_\delta$=" f"{round(1e2*gl[11].values[0],3):.3f}%, " r"$\sigma_z$=" f"{round(1e3*gl[12].values[0],1):.1f}mm," 
+        r" $\rm{\beta}_{x,y}^*$={" f"{round(gl[0].values[0],1):.2f}m, {round(1e3*gl[1].values[0],1):.1f}mm" "}\n"
+        
+        r"V$_{rf}$ 400|800MHz=" f"{round(var_tab.rows['voltca1'].value[0]*len(line_tab_cavity.rows['ca1.*'])/1e3,2) if 'voltca1' in var_tab.name else 0:.2f}GV|{round(var_tab.rows['voltca2'].value[0]*len(line_tab_cavity.rows['ca2.*'])/1e3,2) if 'voltca2' in var_tab.name else 0:.2f}GV,"
+        r" Q$_{x|y|s}$=" "{" f"{round(gl[2].values[0],3):.3f}, {round(gl[3].values[0],3):.3f}, {round(gl[4].values[0],3):.3f}" "},"
+        f" Crab waist={int(1e2*REFERENCE_FILE[MODE]['CRABBING_FACTOR'])}%"
+       ), fontsize=10, y= .95
+)
+
+if MODE == 'zmh4ip':
+    script = "zmh4ip"
+elif MODE == 'zmh4ipa':
+    script = "zmh4ipa"
+elif MODE == 'zmv1':
+    script = "zmv1"
+elif MODE == 'zmm':
+    script = "zmm"
+else:
+    script = r"t$\rm{\bar{t}}$"
+
+plt.text(0., 0., script, size=20, color='r',
+         ha="center", va="center")
+
+plt.tight_layout()
+plt.savefig(f'DA_xy_{MODE}_{LATTICE}_xsuite_full_wplanes.png', dpi=200, bbox_inches='tight')

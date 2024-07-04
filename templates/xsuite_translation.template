@@ -1,0 +1,37 @@
+import json
+from pathlib import Path
+from cpymad.madx import Madx
+import xtrack as xt
+import xpart as xp
+import xobjects as xo
+
+
+def main():
+
+    with Madx() as mad:
+        filename = Path("fcc_ee_{{operation_mode}}_b1_thin_rf.seq")
+        mad.input(
+            f"""
+                SET, FORMAT="19.15f";
+                option,update_from_parent=true; // new option in mad-x as of 2/2019
+
+                CALL, FILE="{filename}";
+                BEAM;
+                
+                USE, SEQUENCE = FCCEE_P_RING;
+
+            """
+        )
+        line = xt.Line.from_madx_sequence(mad.sequence['FCCEE_P_RING'],
+                                          apply_madx_errors=False,
+                                          deferred_expressions=True,
+                                          install_apertures=False)
+    # Save to json
+    with open(filename.with_suffix('.json'), 'w', encoding='utf-8') as fid:
+        json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+
+
+# Script Mode ------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()

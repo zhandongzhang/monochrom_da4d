@@ -1,0 +1,109 @@
+{
+    "LATTICE": "GHC_V22_M",
+    "OPERATION_MODES": [ "zmh4ip","zmv1","zmm" ],
+    "zmh4ip": {
+        "SHORT_DESCRIPTION": "Z monochrom_h_4ip, 62.5 GeV",
+        "LONG_DESCRIPTION": "Horizontal dispersion generation at four IPs based on Z mode lattice",
+        "ENERGY": 62.5,
+        "EMITTANCE_X": 4.94e-9,
+        "EMITTANCE_Y": 4.71e-12,
+        "EMITTANCE_Y_COLL": 4.71e-12,
+        "EMITTANCE_RATIO": 2.0E-3,
+        "SIGMA_Z_SR": 4.15E-3,
+        "SIGMA_Z_BS": 4.16E-3,
+        "BUNCHES": 13420,
+        "BUNCH_POPULATION": 0.559E11,
+        "MOMENTUM_COMPACTION": 27.4e-6,
+        "Q1": 214.27,
+        "Q2": 214.39,
+        "BETASTAR_X": 0.09,
+        "BETASTAR_Y": 0.001,
+        "CRABBING_FACTOR": 0.1,
+        "DA_XY": {
+            "TURNS": 438,
+            "J_PLOT": 100,
+            "J_RANGE": [ 0, 120 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -30, 30 ],
+            "Z_STEP": 1
+        },
+        "DA_XZ": {
+            "TURNS": 438,
+            "J_PLOT": 25,
+            "J_RANGE": [ 0, 40 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -1.5e-2, 1.5e-2 ],
+            "Z_STEP": 1.0e-3
+        }
+    },
+    "zmv1": {
+        "SHORT_DESCRIPTION": "Z monochrom_v_1, 62.5 GeV",
+        "LONG_DESCRIPTION": "1 mm vertical dispersion generation at four IPs based on Z mode lattice",
+        "ENERGY": 62.5,
+        "EMITTANCE_X": 1.32e-9,
+        "EMITTANCE_Y": 2.65e-12,
+        "EMITTANCE_Y_COLL": 2.65e-12,
+        "EMITTANCE_RATIO": 2.0E-3,
+        "SIGMA_Z_SR": 4.10E-3,
+        "SIGMA_Z_BS": 6.81E-3,
+        "BUNCHES": 13420,
+        "BUNCH_POPULATION": 0.559E11,
+        "MOMENTUM_COMPACTION": 27.9e-6,
+        "Q1": 214.27,
+        "Q2": 214.39,
+        "BETASTAR_X": 0.1,
+        "BETASTAR_Y": 0.0008,
+        "CRABBING_FACTOR": 0.9,
+        "DA_XY": {
+            "TURNS": 500,
+            "J_PLOT": 100,
+            "J_RANGE": [ 0, 120 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -30, 30 ],
+            "Z_STEP": 1
+        },
+        "DA_XZ": {
+            "TURNS": 500,
+            "J_PLOT": 25,
+            "J_RANGE": [ 0, 40 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -1.5e-2, 1.5e-2 ],
+            "Z_STEP": 1.0e-3
+        }
+    },
+    "zmm": {
+        "SHORT_DESCRIPTION": "Z monochrom_mix, 62.5 GeV",
+        "LONG_DESCRIPTION": "Mixed dispersion generation at four IPs based on Z mode lattice",
+        "ENERGY": 62.5,
+        "EMITTANCE_X": 4.88e-9,
+        "EMITTANCE_Y": 4.06e-12,
+        "EMITTANCE_Y_COLL": 4.06e-12,
+        "EMITTANCE_RATIO": 2.0E-3,
+        "SIGMA_Z_SR": 4.15E-3,
+        "SIGMA_Z_BS": 4.16E-3,
+        "BUNCHES": 13420,
+        "BUNCH_POPULATION": 0.559E11,
+        "MOMENTUM_COMPACTION": 27.4e-6,
+        "Q1": 214.27,
+        "Q2": 214.39,
+        "BETASTAR_X": 0.09,
+        "BETASTAR_Y": 0.001,
+        "CRABBING_FACTOR": 0.9,
+        "DA_XY": {
+            "TURNS": 500,
+            "J_PLOT": 100,
+            "J_RANGE": [ 0, 120 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -30, 30 ],
+            "Z_STEP": 1
+        },
+        "DA_XZ": {
+            "TURNS": 500,
+            "J_PLOT": 25,
+            "J_RANGE": [ 0, 40 ],
+            "J_STEP": 1,
+            "Z_RANGE": [ -1.5e-2, 1.5e-2 ],
+            "Z_STEP": 1.0e-3
+        }
+    }
+}
